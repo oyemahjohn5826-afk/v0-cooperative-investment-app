@@ -1,14 +1,15 @@
 import { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { BarChart3, TrendingUp, PiggyBank, Percent } from "lucide-react"
 import { formatNaira } from "@/lib/format"
 import { AdminChart } from "@/components/admin/admin-chart"
 import { ReportsTable } from "@/components/admin/reports-table"
+import { AddReportForm } from "@/components/admin/add-report-form"
 
 export const metadata: Metadata = {
   title: "Reports | Admin - Epicenter Cooperative Society",
-  description: "View financial reports and analytics.",
+  description: "View and manage financial reports and analytics.",
 }
 
 export default async function AdminReportsPage() {
@@ -35,9 +36,12 @@ export default async function AdminReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-epic-black">Financial Reports</h1>
-        <p className="text-muted-foreground">View financial performance and analytics</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-epic-black">Financial Reports</h1>
+          <p className="text-muted-foreground">View and manage financial performance data</p>
+        </div>
+        <AddReportForm />
       </div>
 
       {/* Stats */}
@@ -75,7 +79,10 @@ export default async function AdminReportsPage() {
       {/* Data Table */}
       <Card className="card-gold">
         <CardHeader>
-          <CardTitle>Monthly Data</CardTitle>
+          <CardTitle>Monthly Financial Data</CardTitle>
+          <CardDescription>
+            Click on any row to edit the financial figures. Hover over a row to see the edit button.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ReportsTable reports={reports || []} />
