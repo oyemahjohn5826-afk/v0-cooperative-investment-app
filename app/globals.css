@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Epicenter Brand Colors */
+  --gold: #D4A017;
+  --gold-dark: #C5960C;
+  --gold-light: #E8C547;
+  --black: #1A1A1A;
+  --sky-blue: #87CEEB;
+  --sky-blue-dark: #5FB4D9;
+  
+  /* Theme tokens */
+  --background: #FFFFFF;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  --primary: #D4A017;
+  --primary-foreground: #1A1A1A;
+  --secondary: #F5F5F5;
+  --secondary-foreground: #1A1A1A;
+  --muted: #F5F5F5;
+  --muted-foreground: #6B7280;
+  --accent: #87CEEB;
+  --accent-foreground: #1A1A1A;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #D4A017;
+  --chart-1: #D4A017;
+  --chart-2: #87CEEB;
+  --chart-3: #1A1A1A;
+  --chart-4: #C5960C;
+  --chart-5: #5FB4D9;
+  --radius: 0.5rem;
+  --sidebar: #1A1A1A;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #D4A017;
+  --sidebar-primary-foreground: #1A1A1A;
+  --sidebar-accent: #2D2D2D;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #3D3D3D;
+  --sidebar-ring: #D4A017;
+}
+
+.dark {
+  --background: #1A1A1A;
+  --foreground: #FFFFFF;
+  --card: #2D2D2D;
+  --card-foreground: #FFFFFF;
+  --popover: #2D2D2D;
+  --popover-foreground: #FFFFFF;
+  --primary: #D4A017;
+  --primary-foreground: #1A1A1A;
+  --secondary: #3D3D3D;
+  --secondary-foreground: #FFFFFF;
+  --muted: #3D3D3D;
+  --muted-foreground: #9CA3AF;
+  --accent: #87CEEB;
+  --accent-foreground: #1A1A1A;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #3D3D3D;
+  --input: #3D3D3D;
+  --ring: #D4A017;
+}
+
+@theme inline {
+  --font-sans: 'Inter', 'Geist', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Custom brand colors for Tailwind */
+  --color-gold: var(--gold);
+  --color-gold-dark: var(--gold-dark);
+  --color-gold-light: var(--gold-light);
+  --color-epic-black: var(--black);
+  --color-sky: var(--sky-blue);
+  --color-sky-dark: var(--sky-blue-dark);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Gold gradient utility */
+.gold-gradient {
+  background: linear-gradient(135deg, #D4A017 0%, #E8C547 50%, #C5960C 100%);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #D4A017 0%, #E8C547 50%, #C5960C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gold border glow */
+.gold-glow {
+  box-shadow: 0 0 20px rgba(212, 160, 23, 0.3);
+}
+
+/* Card with gold accent */
+.card-gold {
+  border: 1px solid rgba(212, 160, 23, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(212, 160, 23, 0.1);
+}
+
+.card-gold:hover {
+  border-color: rgba(212, 160, 23, 0.4);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(212, 160, 23, 0.2);
+}
