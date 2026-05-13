@@ -9,7 +9,6 @@ import {
   Wallet,
   TrendingUp,
   PiggyBank,
-  HandCoins,
   UserCheck,
   AlertCircle,
   ArrowRight,
@@ -29,50 +28,57 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient()
 
   // Profiles
-  const { data: members } = await supabase
+  const { data: membersData, error: membersError } = await supabase
     .from("profiles")
     .select("id, full_name, email, status, created_at")
     .order("created_at", { ascending: false })
 
-  const totalMembers = members?.length || 0
-  const approvedMembers = members?.filter((m) => m.status === "approved").length || 0
-  const pendingMembers = members?.filter((m) => m.status === "pending").length || 0
-  const suspendedMembers = members?.filter((m) => m.status === "suspended").length || 0
+  const members = membersError ? [] : membersData || []
 
-  const recentMembers = (members || []).slice(0, 5)
+  const totalMembers = members.length
+  const approvedMembers = members.filter((m) => m.status === "approved").length
+  const pendingMembers = members.filter((m) => m.status === "pending").length
+  const suspendedMembers = members.filter((m) => m.status === "suspended").length
+  const recentMembers = members.slice(0, 5)
 
   // Savings
-  const { data: savings } = await supabase
+  const { data: savingsData, error: savingsError } = await supabase
     .from("savings")
     .select("amount")
 
-  const totalSavings =
-    savings?.reduce((sum, s) => sum + Number(s.amount), 0) || 0
+  const savings = savingsError ? [] : savingsData || []
+  const totalSavings = savings.reduce((sum, s) => sum + Number(s.amount || 0), 0)
 
   // Loans
-  const { data: loans } = await supabase
+  const { data: loansData, error: loansError } = await supabase
     .from("loans")
     .select("id, amount, purpose, duration_months, status, created_at")
     .order("created_at", { ascending: false })
 
-  const pendingLoans = loans?.filter((l) => l.status === "pending") || []
-  const approvedLoans = loans?.filter((l) => l.status === "approved") || []
-  const activeLoans =
-    loans?.filter((l) => ["disbursed", "repaying"].includes(l.status)) || []
+  const loans = loansError ? [] : loansData || []
 
-  const pendingLoansAmount =
-    pendingLoans.reduce((sum, l) => sum + Number(l.amount), 0)
+  const pendingLoans = loans.filter((l) => l.status === "pending")
+  const approvedLoans = loans.filter((l) => l.status === "approved")
+  const activeLoans = loans.filter((l) => ["disbursed", "repaying"].includes(l.status))
+  const pendingLoansAmount = pendingLoans.reduce(
+    (sum, l) => sum + Number(l.amount || 0),
+    0
+  )
 
   // Reports
-  const { data: reports } = await supabase
+  const { data: reportsData, error: reportsError } = await supabase
     .from("financial_reports")
-    .select("month, year, total_assets, total_profit")
+    .select(
+      "month, year, total_assets, deposit_ytd, profit_ytd, monthly_deposit, monthly_profit"
+    )
     .order("year", { ascending: true })
     .order("month", { ascending: true })
 
-  const latestReport = reports?.[reports.length - 1]
+  const reports = reportsError ? [] : reportsData || []
+
+  const latestReport = reports.length > 0 ? reports[reports.length - 1] : null
   const totalAssets = Number(latestReport?.total_assets || 0)
-  const totalProfit = Number(latestReport?.total_profit || 0)
+  const totalProfit = Number(latestReport?.profit_ytd || 0)
 
   const stats = [
     {
@@ -119,10 +125,10 @@ export default async function AdminDashboardPage() {
       color: "bg-sky-100 text-sky-700",
     },
     {
-      title: "Total Profit",
+      title: "Profit YTD",
       value: formatNaira(totalProfit),
       icon: TrendingUp,
-      description: "Latest reported profit",
+      description: "Latest reported year-to-date profit",
       color: "bg-purple-100 text-purple-600",
     },
   ]
@@ -131,7 +137,6 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
@@ -150,7 +155,6 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Attention Banner */}
       {totalPendingItems > 0 && (
         <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -188,7 +192,6 @@ export default async function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {stats.map((stat) => (
           <Card key={stat.title} className={stat.urgent ? "border-yellow-300" : ""}>
@@ -211,7 +214,6 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      {/* Quick status cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -223,7 +225,9 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Active Loans</p>
-            <p className="text-2xl font-bold mt-1">{approvedLoans.length + activeLoans.length}</p>
+            <p className="text-2xl font-bold mt-1">
+              {approvedLoans.length + activeLoans.length}
+            </p>
           </CardContent>
         </Card>
 
@@ -235,17 +239,15 @@ export default async function AdminDashboardPage() {
         </Card>
       </div>
 
-      {/* Charts */}
       <Card>
         <CardHeader>
           <CardTitle>Financial Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <AdminChart reports={reports || []} />
+          <AdminChart data={reports} />
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-3">
