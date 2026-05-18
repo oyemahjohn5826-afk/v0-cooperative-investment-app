@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useTransition } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { formatNaira } from "@/lib/format"
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card"
@@ -64,6 +63,14 @@ type AdjustmentForm = {
   description: string
 }
 
+function formatNaira(amount: number) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+  }).format(amount)
+}
+
 export function AdminLedger({ members }: { members: Member[] }) {
   const supabase = createClient()
   const [year, setYear] = useState(CURRENT_YEAR)
@@ -78,6 +85,7 @@ export function AdminLedger({ members }: { members: Member[] }) {
 
   useEffect(() => {
     fetchLedger()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month])
 
   async function fetchLedger() {
@@ -106,7 +114,7 @@ export function AdminLedger({ members }: { members: Member[] }) {
         .eq("year", year).eq("month_number", month),
     ])
 
-    const sum = (rows: any[], id: string) =>
+    const sum = (rows: { member_id: string; amount: number }[] | null, id: string) =>
       (rows || []).filter((r) => r.member_id === id)
         .reduce((acc, r) => acc + Number(r.amount), 0)
 
@@ -179,11 +187,10 @@ export function AdminLedger({ members }: { members: Member[] }) {
       <div>
         <h1 className="text-2xl font-bold">Monthly Ledger</h1>
         <p className="text-muted-foreground text-sm">
-          Transaction-driven member ledger. All figures are pulled live from transaction records.
+          Transaction-driven member ledger. All figures pulled live from transaction records.
         </p>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="pt-4 flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2">
@@ -218,7 +225,6 @@ export function AdminLedger({ members }: { members: Member[] }) {
         </CardContent>
       </Card>
 
-      {/* Ledger Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -288,7 +294,6 @@ export function AdminLedger({ members }: { members: Member[] }) {
                     </TableRow>
                   ))}
 
-                  {/* Totals Row */}
                   <TableRow className="bg-muted/50 font-bold border-t-2">
                     <TableCell>TOTALS</TableCell>
                     <TableCell className="text-right text-green-600">{formatNaira(totals.deposits)}</TableCell>
@@ -308,7 +313,6 @@ export function AdminLedger({ members }: { members: Member[] }) {
         </CardContent>
       </Card>
 
-      {/* Manual Adjustment Modal */}
       <Dialog open={showAdjModal} onOpenChange={setShowAdjModal}>
         <DialogContent>
           <DialogHeader>
