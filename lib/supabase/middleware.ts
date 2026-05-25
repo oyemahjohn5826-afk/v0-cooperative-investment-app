@@ -31,7 +31,7 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // ✅ Public routes — never redirect these
+  // ✅ PUBLIC ROUTES - Never redirect these
   const publicPaths = [
     "/",
     "/about",
@@ -48,14 +48,16 @@ export async function updateSession(request: NextRequest) {
     publicPaths.includes(pathname) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/auth/") ||
     pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js)$/)
 
-  // Not logged in + trying to access protected route → send to login
+  // If no user AND trying to access protected page → send to login
   if (!user && !isPublic) {
-    return NextResponse.redirect(new URL("/auth/login", request.url))
+    const loginUrl = new URL("/auth/login", request.url)
+    return NextResponse.redirect(loginUrl)
   }
 
-  // Logged in + trying to access login/register → send to dashboard
+  // If user IS logged in AND on login/register page → send to dashboard
   if (user && (pathname === "/auth/login" || pathname === "/auth/register")) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
