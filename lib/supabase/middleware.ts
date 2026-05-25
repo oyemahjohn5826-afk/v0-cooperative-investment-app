@@ -9,9 +9,13 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return request.cookies.getAll() },
+        getAll() {
+          return request.cookies.getAll()
+        },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -21,46 +25,39 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const protectedPaths = ["/dashboard", "/admin"]
-  const isProtectedPath = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  )
+  const { pathname } = request.nextUrl
 
-  // Not logged in → redirect to login
-  if (isProtectedPath && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
+  // ✅ Public routes — never redirect these
+  const publicPaths = [
+    "/",
+    "/about",
+    "/contact",
+    "/auth/login",
+    "/auth/register",
+    "/auth/callback",
+    "/auth/pending",
+    "/auth/awaiting-approval",
+    "/auth/sign-up-success",
+  ]
+
+  const isPublic =
+    publicPaths.includes(pathname) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js)$/)
+
+  // Not logged in + trying to access protected route → send to login
+  if (!user && !isPublic) {
+    return NextResponse.redirect(new URL("/auth/login", request.url))
   }
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, status")
-      .eq("id", user.id)
-      .single()
-
-    // Admin-only routes
-    if (request.nextUrl.pathname.startsWith("/admin")) {
-      if (profile?.role !== "admin") {
-        const url = request.nextUrl.clone()
-        url.pathname = "/dashboard"
-        return NextResponse.redirect(url)
-      }
-    }
-
-    // Pending/suspended members → block dashboard, send to waiting page
-    if (
-      request.nextUrl.pathname.startsWith("/dashboard") &&
-      profile?.status !== "approved" &&
-      profile?.role !== "admin"
-    ) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/auth/pending"
-      return NextResponse.redirect(url)
-    }
+  // Logged in + trying to access login/register → send to dashboard
+  if (user && (pathname === "/auth/login" || pathname === "/auth/register")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
   return supabaseResponse
