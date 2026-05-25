@@ -9,7 +9,9 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   if (!user) {
     redirect("/auth/login")
@@ -25,19 +27,21 @@ export default async function DashboardLayout({
     redirect("/auth/login")
   }
 
-  if (profile.status === "pending") {
+  // ✅ Admins should not be in /dashboard — send them to /admin
+  if (profile.role === "admin") {
+    redirect("/admin")
+  }
+
+  // ✅ Block pending or suspended members
+  if (profile.status === "pending" || profile.status === "suspended") {
     redirect("/auth/pending")
   }
 
   return (
-    <div className="min-h-screen bg-secondary/30">
-      <DashboardSidebar profile={profile} />
-      <div className="lg:pl-64">
-        <DashboardHeader profile={profile} />
-        <main className="p-6">
-          {children}
-        </main>
-      </div>
+    <div>
+      <DashboardSidebar />
+      <DashboardHeader />
+      {children}
     </div>
   )
 }
