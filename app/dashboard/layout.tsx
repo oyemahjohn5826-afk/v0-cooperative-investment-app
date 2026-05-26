@@ -25,18 +25,22 @@ export default async function DashboardLayout({
     redirect("/auth/login")
   }
 
-  if (profile.status === "pending") {
+  // Admins should be at /admin, not /dashboard
+  if (profile.role === "admin") {
+    redirect("/admin")
+  }
+
+  // Only block non-admins who are pending
+  if (profile.status === "pending" || profile.status === "suspended") {
     redirect("/auth/pending")
   }
 
   return (
-    <div className="min-h-screen bg-secondary/30">
+    <div className="flex h-screen overflow-hidden">
       <DashboardSidebar profile={profile} />
-      <div className="lg:pl-64">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <DashboardHeader profile={profile} />
-        <main className="p-6">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   )
