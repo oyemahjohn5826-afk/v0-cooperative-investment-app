@@ -1,67 +1,56 @@
-import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  const pathname = request.nextUrl.pathname
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
+  const role = (request.cookies.get("ec_role")?.value || "").toLowerCase()
+  const status = (request.cookies.get("ec_status")?.value || "").toLowerCase()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const publicPaths = [
+    "/",
+    "/about",
+    "/contact",
+    "/auth/login",
+    "/auth/register",
+    "/auth/admin-login",
+    "/auth/member-login",
+    "/auth/pending",
+    "/api/auth/whoami",
+    "/api/auth/logout",
+  ]
 
-  const protectedPaths = ["/dashboard", "/admin"]
-  const isProtectedPath = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  )
+  const isPublic =
+    publicPaths.includes(pathname) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|css|js)$/)
 
-  // Not logged in → redirect to login
-  if (isProtectedPath && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
+  if (isPublic) {
+    return NextResponse.next()
   }
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, status")
-      .eq("id", user.id)
-      .single()
-
-    // Admin-only routes
-    if (request.nextUrl.pathname.startsWith("/admin")) {
-      if (profile?.role !== "admin") {
-        const url = request.nextUrl.clone()
-        url.pathname = "/dashboard"
-        return NextResponse.redirect(url)
-      }
+  if (pathname.startsWith("/admin")) {
+    if (role !== "admin") {
+      return NextResponse.redirect(new URL("/auth/admin-login", request.url))
     }
-
-    // Pending/suspended members → block dashboard, send to waiting page
-    if (
-      request.nextUrl.pathname.startsWith("/dashboard") &&
-      profile?.status !== "approved" &&
-      profile?.role !== "admin"
-    ) {
-      const url = request.nextUrl.clone()
-      url.pathname = "/auth/pending"
-      return NextResponse.redirect(url)
-    }
+    return NextResponse.next()
   }
 
-  return supabaseResponse
+  if (pathname.startsWith("/dashboard")) {
+    if (role === "admin") {
+      return NextResponse.redirect(new URL("/admin", request.url))
+    }
+
+    if (!status) {
+      return NextResponse.redirect(new URL("/auth/member-login", request.url))
+    }
+
+    if (status !== "approved") {
+      return NextResponse.redirect(new URL("/auth/pending", request.url))
+    }
+
+    return NextResponse.next()
+  }
+
+  return NextResponse.next()
 }

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import { AdminSidebar } from "@/components/admin/sidebar"
 import { AdminHeader } from "@/components/admin/header"
 
@@ -8,31 +8,29 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
 
-  if (!user) {
-    redirect("/auth/login")
+  const role = (cookieStore.get("ec_role")?.value || "").toLowerCase()
+  const status = (cookieStore.get("ec_status")?.value || "").toLowerCase()
+
+  if (role !== "admin") {
+    redirect("/auth/admin-login")
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile || profile.role !== "admin") {
-    redirect("/dashboard")
+  const profile = {
+    id: cookieStore.get("ec_user_id")?.value || "",
+    email: cookieStore.get("ec_email")?.value || "",
+    full_name: cookieStore.get("ec_full_name")?.value || "Admin",
+    role,
+    status,
   }
 
   return (
-    <div className="min-h-screen bg-secondary/30">
-      <AdminSidebar profile={profile} />
-      <div className="lg:pl-64">
-        <AdminHeader profile={profile} />
-        <main className="p-6">
-          {children}
-        </main>
+    <div className="flex h-screen overflow-hidden">
+      <AdminSidebar profile={profile as any} />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <AdminHeader profile={profile as any} />
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   )

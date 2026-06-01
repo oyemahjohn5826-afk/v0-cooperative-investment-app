@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { cookies } from "next/headers"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardHeader } from "@/components/dashboard/header"
 
@@ -8,38 +8,36 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
 
-  if (!user) {
-    redirect("/auth/login")
-  }
+  const role = (cookieStore.get("ec_role")?.value || "").toLowerCase()
+  const status = (cookieStore.get("ec_status")?.value || "").toLowerCase()
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single()
-
-  if (!profile) {
-    redirect("/auth/login")
-  }
-
-  // Admins should be at /admin, not /dashboard
-  if (profile.role === "admin") {
+  if (role === "admin") {
     redirect("/admin")
   }
 
-  // Only block non-admins who are pending
-  if (profile.status === "pending" || profile.status === "suspended") {
+  if (!status) {
+    redirect("/auth/member-login")
+  }
+
+  if (status !== "approved") {
     redirect("/auth/pending")
+  }
+
+  const profile = {
+    id: cookieStore.get("ec_user_id")?.value || "",
+    email: cookieStore.get("ec_email")?.value || "",
+    full_name: cookieStore.get("ec_full_name")?.value || "Member",
+    role,
+    status,
   }
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <DashboardSidebar profile={profile} />
+      <DashboardSidebar profile={profile as any} />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <DashboardHeader profile={profile} />
+        <DashboardHeader profile={profile as any} />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
