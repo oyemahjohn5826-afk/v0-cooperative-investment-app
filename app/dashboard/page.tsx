@@ -3,12 +3,12 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Wallet, TrendingUp, HandCoins, Gift } from "lucide-react"
 import { formatNaira } from "@/lib/format"
-import { SavingsHistory } from "@/components/dashboard/savings-history"
+import { DepositsHistory } from "@/components/dashboard/deposits-history"
 import { AnnouncementsFeed } from "@/components/dashboard/announcements-feed"
 
 export const metadata: Metadata = {
   title: "Dashboard | Epicenter Cooperative Society",
-  description: "View your savings, contributions, and investment performance.",
+  description: "View your deposits, contributions, and investment performance.",
 }
 
 export default async function DashboardPage() {
@@ -21,9 +21,9 @@ export default async function DashboardPage() {
     .eq("id", user?.id)
     .single()
 
-  // Get user's savings
-  const { data: savings } = await supabase
-    .from("savings")
+  // Get user's deposits
+  const { data: deposits } = await supabase
+    .from("deposits")
     .select("*")
     .eq("user_id", user?.id)
     .order("year", { ascending: false })
@@ -36,23 +36,23 @@ export default async function DashboardPage() {
     .eq("user_id", user?.id)
 
   // Calculate totals
-  const totalSavings = savings?.reduce((sum, s) => sum + Number(s.amount), 0) || 0
+  const totalDeposits = deposits?.reduce((sum, d) => sum + Number(d.amount), 0) || 0
   const activeLoans = loans?.filter(l => ["approved", "disbursed", "repaying"].includes(l.status)) || []
   const totalActiveLoans = activeLoans.reduce((sum, l) => sum + Number(l.amount), 0)
-  
+
   // Estimate dividends (simplified - in production this would be more complex)
-  const estimatedDividends = totalSavings * 0.15 // 15% estimated return
+  const estimatedDividends = totalDeposits * 0.15 // 15% estimated return
 
   const stats = [
     {
-      title: "Total Savings",
-      value: formatNaira(totalSavings),
+      title: "Total Deposits",
+      value: formatNaira(totalDeposits),
       icon: Wallet,
       description: "Your total contributions",
     },
     {
       title: "Total Contributions",
-      value: savings?.length || 0,
+      value: deposits?.length || 0,
       icon: TrendingUp,
       description: "Number of deposits",
     },
@@ -73,69 +73,52 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="relative rounded-2xl overflow-hidden gold-gradient p-6 md:p-8">
-        <div className="relative z-10">
-          <h1 className="text-2xl md:text-3xl font-bold text-epic-black mb-2">
-            Welcome back, {profile?.full_name?.split(" ")[0] || "Member"}!
-          </h1>
-          <p className="text-epic-black/70">
-            Track your investments and grow your wealth with Epicenter Cooperative.
-          </p>
-        </div>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div>
+        <h1 className="text-2xl font-bold">
+          Welcome back, {profile?.full_name?.split(" ")[0] || "Member"}!
+        </h1>
+        <p className="text-muted-foreground">
+          Track your investments and grow your wealth with Epicenter Cooperative.
+        </p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
-          <Card key={index} className="card-gold">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
-                  <p className="text-2xl font-bold text-epic-black">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-                </div>
-                <div className="w-10 h-10 rounded-lg gold-gradient flex items-center justify-center">
-                  <stat.icon className="w-5 h-5 text-epic-black" />
-                </div>
-              </div>
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Savings History */}
-        <div className="lg:col-span-2">
-          <Card className="card-gold">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-gold" />
-                Savings History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SavingsHistory savings={savings || []} />
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Deposit History */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Deposit History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DepositsHistory deposits={deposits || []} />
+          </CardContent>
+        </Card>
 
         {/* Announcements */}
-        <div>
-          <Card className="card-gold">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Gift className="w-5 h-5 text-gold" />
-                Announcements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AnnouncementsFeed />
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Announcements</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AnnouncementsFeed />
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

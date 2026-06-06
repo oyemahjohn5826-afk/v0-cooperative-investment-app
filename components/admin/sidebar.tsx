@@ -32,7 +32,7 @@ interface Profile {
 const menuItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/members", label: "Members", icon: Users },
-  { href: "/admin/savings", label: "Savings", icon: Wallet },
+  { href: "/admin/savings", label: "Deposits", icon: Wallet },
   { href: "/admin/loans", label: "Loans", icon: HandCoins },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/ledger", label: "Monthly Ledger", icon: TableIcon },

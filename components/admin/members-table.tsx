@@ -168,7 +168,7 @@ export function MembersTable({ members }: { members: Member[] }) {
             <TableRow>
               <TableHead>Member</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead>Savings Plan</TableHead>
+              <TableHead>Deposit Plan</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -350,7 +350,7 @@ export function MembersTable({ members }: { members: Member[] }) {
                     <p className="font-medium">{selectedMember.sponsor_name || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Savings Plan</p>
+                    <p className="text-xs text-muted-foreground">Deposit Plan</p>
                     <p className="font-medium">{selectedMember.savings_plan || "—"}</p>
                   </div>
                   <div>

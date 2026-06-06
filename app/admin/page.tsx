@@ -21,7 +21,7 @@ import { PendingLoans } from "@/components/admin/pending-loans"
 
 export const metadata: Metadata = {
   title: "Admin Dashboard | Epicenter Cooperative Society",
-  description: "Manage members, savings, and loans.",
+  description: "Manage members, deposits, and loans.",
 }
 
 export default async function AdminDashboardPage() {
@@ -34,20 +34,19 @@ export default async function AdminDashboardPage() {
     .order("created_at", { ascending: false })
 
   const members = membersError ? [] : membersData || []
-
   const totalMembers = members.length
   const approvedMembers = members.filter((m) => m.status === "approved").length
   const pendingMembers = members.filter((m) => m.status === "pending").length
   const suspendedMembers = members.filter((m) => m.status === "suspended").length
   const recentMembers = members.slice(0, 5)
 
-  // Savings
-  const { data: savingsData, error: savingsError } = await supabase
-    .from("savings")
+  // Deposits
+  const { data: depositsData, error: depositsError } = await supabase
+    .from("deposits")
     .select("amount")
 
-  const savings = savingsError ? [] : savingsData || []
-  const totalSavings = savings.reduce((sum, s) => sum + Number(s.amount || 0), 0)
+  const deposits = depositsError ? [] : depositsData || []
+  const totalDeposits = deposits.reduce((sum, d) => sum + Number(d.amount || 0), 0)
 
   // Loans
   const { data: loansData, error: loansError } = await supabase
@@ -56,7 +55,6 @@ export default async function AdminDashboardPage() {
     .order("created_at", { ascending: false })
 
   const loans = loansError ? [] : loansData || []
-
   const pendingLoans = loans.filter((l) => l.status === "pending")
   const approvedLoans = loans.filter((l) => l.status === "approved")
   const activeLoans = loans.filter((l) => ["disbursed", "repaying"].includes(l.status))
@@ -75,7 +73,6 @@ export default async function AdminDashboardPage() {
     .order("month", { ascending: true })
 
   const reports = reportsError ? [] : reportsData || []
-
   const latestReport = reports.length > 0 ? reports[reports.length - 1] : null
   const totalAssets = Number(latestReport?.total_assets || 0)
   const totalProfit = Number(latestReport?.profit_ytd || 0)
@@ -112,7 +109,7 @@ export default async function AdminDashboardPage() {
     },
     {
       title: "Total Deposits",
-      value: formatNaira(totalSavings),
+      value: formatNaira(totalDeposits),
       icon: Wallet,
       description: "All member contributions",
       color: "bg-green-100 text-green-600",
@@ -137,144 +134,132 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <p className="text-muted-foreground">
             Manage members, track finances, and oversee cooperative operations.
           </p>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
             <Link href="/admin/members">Manage Members</Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild>
             <Link href="/admin/loans">Review Loans</Link>
           </Button>
         </div>
       </div>
 
       {totalPendingItems > 0 && (
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-3">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-start gap-2 text-yellow-800">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <div className="text-sm">
-                <p className="font-semibold">Items need attention</p>
-                <p>
-                  {pendingMembers} pending member approval
-                  {pendingMembers !== 1 ? "s" : ""} and {pendingLoans.length} pending
-                  loan application{pendingLoans.length !== 1 ? "s" : ""}.
-                </p>
-              </div>
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="flex items-start gap-3 pt-4">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-yellow-800">Items need attention</p>
+              <p className="text-sm text-yellow-700">
+                {pendingMembers} pending member approval
+                {pendingMembers !== 1 ? "s" : ""} and {pendingLoans.length} pending
+                loan application{pendingLoans.length !== 1 ? "s" : ""}.
+              </p>
             </div>
-
             <div className="flex gap-2">
               {pendingMembers > 0 && (
                 <Button asChild size="sm" variant="outline">
-                  <Link href="/admin/members">
-                    Review Members
-                    <ArrowRight className="h-4 w-4 ml-1" />
-                  </Link>
+                  <Link href="/admin/members?filter=pending">Review Members</Link>
                 </Button>
               )}
               {pendingLoans.length > 0 && (
                 <Button asChild size="sm">
-                  <Link href="/admin/loans">
-                    Review Loans
-                    <ArrowRight className="h-4 w-4 ml-1" />
-                  </Link>
+                  <Link href="/admin/loans?filter=pending">Review Loans</Link>
                 </Button>
               )}
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title} className={stat.urgent ? "border-yellow-300" : ""}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className={`p-2 rounded-lg ${stat.color}`}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-                {stat.urgent && (
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                    Action needed
-                  </Badge>
-                )}
+          <Card key={stat.title} className="relative">
+            {stat.urgent && (
+              <Badge className="absolute top-2 right-2 bg-yellow-500 text-white text-xs">
+                Action needed
+              </Badge>
+            )}
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <div className={`p-2 rounded-full ${stat.color}`}>
+                <stat.icon className="h-4 w-4" />
               </div>
-              <p className="text-sm text-muted-foreground">{stat.title}</p>
-              <p className="text-2xl font-bold mt-1">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">{stat.description}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Approved Members</p>
-            <p className="text-2xl font-bold mt-1">{approvedMembers}</p>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Approved Members</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{approvedMembers}</div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Active Loans</p>
-            <p className="text-2xl font-bold mt-1">
-              {approvedLoans.length + activeLoans.length}
-            </p>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{approvedLoans.length + activeLoans.length}</div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Suspended Members</p>
-            <p className="text-2xl font-bold mt-1">{suspendedMembers}</p>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Suspended Members</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{suspendedMembers}</div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Financial Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AdminChart data={reports} />
-        </CardContent>
-      </Card>
-
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <CardTitle>Recent Members</CardTitle>
-              {pendingMembers > 0 && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                  {pendingMembers} pending
-                </Badge>
-              )}
-            </div>
-
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/admin/members">View all</Link>
-            </Button>
+          <CardHeader>
+            <CardTitle>Financial Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentMembers members={recentMembers} />
+            <AdminChart data={reports} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Recent Members</CardTitle>
+              {pendingMembers > 0 && (
+                <Badge className="bg-yellow-500 text-white">{pendingMembers} pending</Badge>
+              )}
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/admin/members">
+                  View all <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <RecentMembers members={recentMembers} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Pending Loan Applications</CardTitle>
               <Badge
-                variant="secondary"
                 className={
                   pendingLoans.length > 0
                     ? "bg-orange-100 text-orange-800"
@@ -283,16 +268,17 @@ export default async function AdminDashboardPage() {
               >
                 {pendingLoans.length}
               </Badge>
-            </div>
-
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/admin/loans">Open loans</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <PendingLoans loans={pendingLoans.slice(0, 5)} />
-          </CardContent>
-        </Card>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/admin/loans">
+                  Open loans <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <PendingLoans loans={pendingLoans} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
