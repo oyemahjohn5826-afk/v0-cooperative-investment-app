@@ -1,0 +1,34 @@
+# Supabase project configuration (template)
+#
+# ⚠️  review before running `supabase` CLI commands. Set `project_id` to your
+# real project ref (the subdomain of your Supabase URL) and adjust the keys
+# below as needed. This file is committed for version control only.
+#
+# Migrations live in ./migrations/0001_init.sql (INFERRED schema — reconcile
+# against the live DB before applying; see the header comment in that file).
+
+project_id = "wkijomnsaekmlkdveumb"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://localhost:3000/auth/reset-password"]
+jwt_expiry = 3600
+
+[analytics]
+enabled = false

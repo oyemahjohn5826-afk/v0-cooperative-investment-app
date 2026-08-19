@@ -33,3 +33,5 @@ rpc.json
 rst.json
 tg.json
 ts.json
+
+# Supabase SQL is now regenerated from the live schema (accurate source of truth)
