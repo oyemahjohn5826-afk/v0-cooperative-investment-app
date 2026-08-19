@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -29,7 +28,6 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function MemberLoginPage() {
-  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -41,10 +39,11 @@ export default function MemberLoginPage() {
     setIsLoading(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       })
+      const session = signInData?.session
 
       if (error) {
         toast.error(error.message)
@@ -52,63 +51,41 @@ export default function MemberLoginPage() {
         return
       }
 
-      // Sync server cookies for SSR
-      const { data: sessionData } = await supabase.auth.getSession()
-      const session = sessionData?.session
-      if (session) {
-        await fetch("/api/auth/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-          }),
-          cache: "no-store",
-        })
-
-        // CRITICAL: also set the custom ec_* SSR cookies (role/status/user_id/...)
-        // consumed by the /dashboard and /admin route guards. Without this, members
-        // sign in successfully but the guard never sees ec_status and bounces them
-        // back to /auth/member-login in an infinite loop.
-        await fetch("/api/auth/whoami", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ access_token: session.access_token }),
-          cache: "no-store",
-        }).catch(() => {
-          // Non-fatal: routing below still works via the local profile read.
-        })
-      }
-
-      // Fetch profile and route
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        toast.error("No user detected after sign-in")
+      if (!session) {
+        toast.error("No session returned after sign-in")
         setIsLoading(false)
         return
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role, status")
-        .eq("id", user.id)
-        .single()
+      // Set SSR cookies via whoami, then route using its AUTHORITATIVE response.
+      // We navigate only after the response is fully parsed so the ec_* cookies
+      // are applied in the browser before the /dashboard (or /admin) guard reads them.
+      const whoamiRes = await fetch("/api/auth/whoami", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: session.access_token }),
+        cache: "no-store",
+      })
+      const whoamiJson = await whoamiRes.json().catch(() => ({ ok: false }))
 
-      const role = (profile?.role || "").toString().toLowerCase()
-      const status = (profile?.status || "").toString().toLowerCase()
+      if (!whoamiJson?.ok || !whoamiJson?.profile) {
+        toast.error("Login succeeded but profile lookup failed. Try again.")
+        setIsLoading(false)
+        return
+      }
+
+      const role = String(whoamiJson.profile.role || "").toLowerCase()
+      const status = String(whoamiJson.profile.status || "").toLowerCase()
 
       if (role === "admin") {
-        // If someone used the member login but the account is admin, send to admin
         toast.success("Welcome back, Admin")
-        router.push("/admin")
-        router.refresh()
+        window.location.href = "/admin"
         return
       }
 
       if (status === "approved") {
         toast.success("Welcome back")
-        router.push("/dashboard")
-        router.refresh()
+        window.location.href = "/dashboard"
         return
       }
 
@@ -120,8 +97,7 @@ export default function MemberLoginPage() {
       }
 
       // otherwise pending or other status
-      router.push("/auth/pending")
-      router.refresh()
+      window.location.href = "/auth/pending"
     } catch (err: unknown) {
       console.error("Member login error:", err)
       toast.error("Login failed")
