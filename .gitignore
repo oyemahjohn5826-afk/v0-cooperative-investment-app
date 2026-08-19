@@ -13,3 +13,23 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+
+# Local agent/tooling state
+.hermes/
+.opencode/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+.cache/
+
+# Scratch / debugging dumps (not project source)
+*.dump.json
+mg.json
+mgr.json
+rj.json
+rj2.json
+rpc.json
+rst.json
+tg.json
+ts.json

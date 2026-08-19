@@ -65,6 +65,19 @@ export default function MemberLoginPage() {
           }),
           cache: "no-store",
         })
+
+        // CRITICAL: also set the custom ec_* SSR cookies (role/status/user_id/...)
+        // consumed by the /dashboard and /admin route guards. Without this, members
+        // sign in successfully but the guard never sees ec_status and bounces them
+        // back to /auth/member-login in an infinite loop.
+        await fetch("/api/auth/whoami", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: session.access_token }),
+          cache: "no-store",
+        }).catch(() => {
+          // Non-fatal: routing below still works via the local profile read.
+        })
       }
 
       // Fetch profile and route

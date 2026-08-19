@@ -1,67 +1,33 @@
 "use client"
-
 import { useState, useEffect, useTransition } from "react"
 import { createClient } from "@/lib/supabase/client"
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { PlusCircle, Loader2, SlidersHorizontal } from "lucide-react"
+import { PlusCircle, Loader2, TrendingUp, Users, Wallet, Percent } from "lucide-react"
 
 const MONTHS = [
-  { label: "January", value: 1 },
-  { label: "February", value: 2 },
-  { label: "March", value: 3 },
-  { label: "April", value: 4 },
-  { label: "May", value: 5 },
-  { label: "June", value: 6 },
-  { label: "July", value: 7 },
-  { label: "August", value: 8 },
-  { label: "September", value: 9 },
-  { label: "October", value: 10 },
-  { label: "November", value: 11 },
-  { label: "December", value: 12 },
+  { label: "January", value: 1, short: "Jan" },
+  { label: "February", value: 2, short: "Feb" },
+  { label: "March", value: 3, short: "Mar" },
+  { label: "April", value: 4, short: "Apr" },
+  { label: "May", value: 5, short: "May" },
+  { label: "June", value: 6, short: "Jun" },
+  { label: "July", value: 7, short: "Jul" },
+  { label: "August", value: 8, short: "Aug" },
+  { label: "September", value: 9, short: "Sep" },
+  { label: "October", value: 10, short: "Oct" },
+  { label: "November", value: 11, short: "Nov" },
+  { label: "December", value: 12, short: "Dec" },
 ]
 
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i)
-
-type Member = {
-  id: string
-  full_name: string | null
-  email: string | null
-  status: string | null
-}
-
-type LedgerRow = {
-  member_id: string
-  full_name: string
-  deposits: number
-  profits: number
-  fees: number
-  withdrawals: number
-  adjustments: number
-  net: number
-}
-
-type AdjustmentForm = {
-  member_id: string
-  member_name: string
-  amount: string
-  description: string
-}
 
 function formatNaira(amount: number) {
   return new Intl.NumberFormat("en-NG", {
@@ -71,6 +37,57 @@ function formatNaira(amount: number) {
   }).format(amount)
 }
 
+function formatPct(value: number) {
+  return (value * 100).toFixed(2) + "%"
+}
+
+type Member = {
+  id: string
+  full_name: string | null
+  email: string | null
+}
+
+type LedgerRow = {
+  member_id: string
+  full_name: string
+  membership_type: "Core" | "Sponsored"  // The "Hidden Column" logic
+  active_status: string
+  registration_fee: number
+  yearly_fee: number
+  monthly_fees: Record<number, number>
+  total_fees_paid: number
+  total_fees_due: number
+  total_fees_outstanding: number
+  net_worth: number
+  total_deposit: number
+  shareholder_pct: number
+  ranking: number
+  referrals: number
+}
+
+// Row shapes returned by the untyped Supabase client (no generated DB types).
+// These mirror the columns the ledger actually reads; adjust if the live
+// schema differs.
+type ShareholderRow = {
+  user_id: string
+  registration_fee?: number | null
+  membership_type?: string | null
+  active_status?: string | null
+  yearly_fee?: number | null
+  net_worth?: number | null
+  total_deposit?: number | null
+  shareholder_pct?: number | null
+  ranking?: number | null
+  referrals?: number | null
+}
+
+type MemberFeeRow = {
+  user_id: string
+  month: number
+  amount?: number | null
+  paid?: boolean | null
+}
+
 export function AdminLedger({ members }: { members: Member[] }) {
   const supabase = createClient()
   const [year, setYear] = useState(CURRENT_YEAR)
@@ -78,277 +95,143 @@ export function AdminLedger({ members }: { members: Member[] }) {
   const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [loading, setLoading] = useState(false)
   const [showAdjModal, setShowAdjModal] = useState(false)
-  const [adjForm, setAdjForm] = useState<AdjustmentForm>({
-    member_id: "", member_name: "", amount: "", description: "",
-  })
-  const [saving, startSaving] = useTransition()
+  const [adjForm, setAdjForm] = useState({ id: "", name: "", amount: "", reason: "" })
+  const [isSaving, startSaving] = useTransition()
 
-  useEffect(() => {
-    fetchLedger()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year, month])
+  useEffect(() => { fetchLedger() }, [year, month])
 
   async function fetchLedger() {
     setLoading(true)
+    const { data: shareholdersData } = await supabase.from("shareholders").select("*")
+    const { data: feesData } = await supabase.from("member_fees").select("*").eq("year", year)
 
-    const startDate = `${year}-${String(month).padStart(2, "0")}-01`
-    const endDate = new Date(year, month, 0).toISOString().split("T")[0]
-
-    const [
-      { data: deposits },
-      { data: profits },
-      { data: fees },
-      { data: withdrawals },
-      { data: adjustments },
-    ] = await Promise.all([
-      supabase.from("deposits").select("member_id, amount")
-        .gte("deposit_date", startDate).lte("deposit_date", endDate),
-      supabase.from("profits").select("member_id, amount")
-        .gte("profit_date", startDate).lte("profit_date", endDate),
-      supabase.from("fees").select("member_id, amount")
-        .gte("fee_date", startDate).lte("fee_date", endDate),
-      supabase.from("withdrawals").select("member_id, amount")
-        .gte("withdrawal_date", startDate).lte("withdrawal_date", endDate)
-        .eq("status", "approved"),
-      supabase.from("manual_adjustments").select("member_id, amount")
-        .eq("year", year).eq("month_number", month),
-    ])
-
-    const sum = (rows: { member_id: string; amount: number }[] | null, id: string) =>
-      (rows || []).filter((r) => r.member_id === id)
-        .reduce((acc, r) => acc + Number(r.amount), 0)
+    const shareholders = shareholdersData as ShareholderRow[] | null
+    const fees = feesData as MemberFeeRow[] | null
 
     const rows: LedgerRow[] = members.map((m) => {
-      const d = sum(deposits, m.id)
-      const p = sum(profits, m.id)
-      const f = sum(fees, m.id)
-      const w = sum(withdrawals, m.id)
-      const a = sum(adjustments, m.id)
+      const sh = shareholders?.find((s) => s.user_id === m.id)
+      const mFees = fees?.filter((f) => f.user_id === m.id) || []
+
+      const monthly_fees: Record<number, number> = {}
+      MONTHS.forEach((mo) => {
+        const amt = mFees.find((f) => f.month === mo.value)?.amount || 0
+        monthly_fees[mo.value] = Number(amt)
+      })
+
+      const paid = mFees.filter(f => f.paid).reduce((s, f) => s + Number(f.amount), 0)
+      const reg = sh?.registration_fee || 0
+      const yr = sh?.yearly_fee || 0
+      const due = reg + yr + Object.values(monthly_fees).reduce((a, b) => a + b, 0)
+
       return {
         member_id: m.id,
-        full_name: m.full_name || m.email || "Unknown",
-        deposits: d,
-        profits: p,
-        fees: f,
-        withdrawals: w,
-        adjustments: a,
-        net: d + p + a - f - w,
+        full_name: m.full_name || m.email || "Unknown Member",
+        membership_type: (sh?.membership_type ?? "Core") as "Core" | "Sponsored", // Defaulting to Core
+        active_status: sh?.active_status || "ACTIVE",
+        registration_fee: reg,
+        yearly_fee: yr,
+        monthly_fees,
+        total_fees_paid: paid,
+        total_fees_due: due,
+        total_fees_outstanding: due - paid,
+        net_worth: sh?.net_worth || 0,
+        total_deposit: sh?.total_deposit || 0,
+        shareholder_pct: sh?.shareholder_pct || 0,
+        ranking: sh?.ranking || 0,
+        referrals: sh?.referrals || 0,
       }
     })
 
-    setLedger(rows)
+    setLedger(rows.sort((a, b) => (a.ranking || 999) - (b.ranking || 999)))
     setLoading(false)
   }
 
-  function openAdjModal(row: LedgerRow) {
-    setAdjForm({
-      member_id: row.member_id,
-      member_name: row.full_name,
-      amount: "",
-      description: "",
-    })
-    setShowAdjModal(true)
-  }
-
-  function handleSaveAdjustment() {
-    startSaving(async () => {
-      const { error } = await supabase.from("manual_adjustments").insert({
-        member_id: adjForm.member_id,
-        amount: parseFloat(adjForm.amount),
-        description: adjForm.description,
-        year,
-        month_number: month,
-      })
-      if (!error) {
-        setShowAdjModal(false)
-        fetchLedger()
-      } else {
-        alert("Error saving adjustment: " + error.message)
-      }
-    })
-  }
-
-  const totals = ledger.reduce(
-    (acc, r) => ({
-      deposits: acc.deposits + r.deposits,
-      profits: acc.profits + r.profits,
-      fees: acc.fees + r.fees,
-      withdrawals: acc.withdrawals + r.withdrawals,
-      adjustments: acc.adjustments + r.adjustments,
-      net: acc.net + r.net,
-    }),
-    { deposits: 0, profits: 0, fees: 0, withdrawals: 0, adjustments: 0, net: 0 }
-  )
-
-  const monthLabel = MONTHS.find((m) => m.value === month)?.label
+  // Summary Totals
+  const totalAssets = ledger.reduce((s, r) => s + r.net_worth, 0)
+  const totalDeposits = ledger.reduce((s, r) => s + r.total_deposit, 0)
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Monthly Ledger</h1>
-        <p className="text-muted-foreground text-sm">
-          Transaction-driven member ledger. All figures pulled live from transaction records.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Monthly Ledger</h1>
+          <p className="text-muted-foreground">Detailed financial records by Member Name</p>
+        </div>
+        <div className="flex gap-2">
+          <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+            <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+            <SelectContent>{YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+            <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+            <SelectContent>{MONTHS.map(m => <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-gold-dark">{formatNaira(totalAssets)}</div><p className="text-xs text-muted-foreground uppercase">Total Net Worth</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><div className="text-2xl font-bold">{formatNaira(totalDeposits)}</div><p className="text-xs text-muted-foreground uppercase">Total Deposits</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-green-600">{formatNaira(ledger.reduce((s, r) => s + r.total_fees_paid, 0))}</div><p className="text-xs text-muted-foreground uppercase">Fees Collected</p></CardContent></Card>
+        <Card><CardContent className="pt-6"><div className="text-2xl font-bold text-red-500">{formatNaira(ledger.reduce((s, r) => s + r.total_fees_outstanding, 0))}</div><p className="text-xs text-muted-foreground uppercase">Total Arrears</p></CardContent></Card>
       </div>
 
       <Card>
-        <CardContent className="pt-4 flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <Label>Year</Label>
-            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
-              <SelectTrigger className="w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {YEARS.map((y) => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50 text-[10px] uppercase font-bold">
+                <TableHead className="min-w-[180px] sticky left-0 bg-muted/50">Member Details</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Reg Fee</TableHead>
+                <TableHead>Yearly</TableHead>
+                {MONTHS.map(m => (
+                  <TableHead key={m.value} className={m.value === month ? "bg-gold/5" : ""}>{m.short}</TableHead>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label>Month</Label>
-            <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MONTHS.map((m) => (
-                  <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Badge variant="outline" className="ml-auto">
-            {monthLabel} {year}
-          </Badge>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4" />
-            Member Ledger — {monthLabel} {year}
-          </CardTitle>
-          <CardDescription>
-            Click the + button on any row to add a manual adjustment.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Member</TableHead>
-                    <TableHead className="text-right">Deposits</TableHead>
-                    <TableHead className="text-right">Profits</TableHead>
-                    <TableHead className="text-right">Fees</TableHead>
-                    <TableHead className="text-right">Withdrawals</TableHead>
-                    <TableHead className="text-right">Adjustments</TableHead>
-                    <TableHead className="text-right font-bold">Net</TableHead>
-                    <TableHead className="w-10" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {ledger.map((row) => (
-                    <TableRow key={row.member_id}>
-                      <TableCell className="font-medium">{row.full_name}</TableCell>
-                      <TableCell className="text-right text-green-600">
-                        {row.deposits > 0 ? formatNaira(row.deposits) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right text-blue-600">
-                        {row.profits > 0 ? formatNaira(row.profits) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right text-orange-500">
-                        {row.fees > 0 ? formatNaira(row.fees) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right text-red-500">
-                        {row.withdrawals > 0 ? formatNaira(row.withdrawals) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {row.adjustments !== 0 ? (
-                          <span className={row.adjustments > 0 ? "text-green-600" : "text-red-500"}>
-                            {formatNaira(row.adjustments)}
-                          </span>
-                        ) : "—"}
-                      </TableCell>
-                      <TableCell className={`text-right font-bold ${row.net >= 0 ? "text-green-700" : "text-red-600"}`}>
-                        {formatNaira(row.net)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => openAdjModal(row)}
-                          title="Add manual adjustment"
-                        >
-                          <PlusCircle className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-
-                  <TableRow className="bg-muted/50 font-bold border-t-2">
-                    <TableCell>TOTALS</TableCell>
-                    <TableCell className="text-right text-green-600">{formatNaira(totals.deposits)}</TableCell>
-                    <TableCell className="text-right text-blue-600">{formatNaira(totals.profits)}</TableCell>
-                    <TableCell className="text-right text-orange-500">{formatNaira(totals.fees)}</TableCell>
-                    <TableCell className="text-right text-red-500">{formatNaira(totals.withdrawals)}</TableCell>
-                    <TableCell className="text-right">{formatNaira(totals.adjustments)}</TableCell>
-                    <TableCell className={`text-right ${totals.net >= 0 ? "text-green-700" : "text-red-600"}`}>
-                      {formatNaira(totals.net)}
+                <TableHead className="bg-green-50">Total Paid</TableHead>
+                <TableHead className="bg-red-50">Arrears</TableHead>
+                <TableHead>Net Worth</TableHead>
+                <TableHead>Rank</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={20} className="text-center py-10"><Loader2 className="animate-spin inline mr-2" /> Loading ledger...</TableCell></TableRow>
+              ) : (
+                ledger.map((row) => (
+                  <TableRow key={row.member_id} className="text-xs">
+                    <TableCell className="sticky left-0 bg-white font-medium border-r">
+                      <div className="font-bold">{row.full_name}</div>
+                      <div className="text-[10px] text-muted-foreground flex gap-1 items-center">
+                        <span className={row.membership_type === "Core" ? "text-gold-dark" : "text-blue-500"}>
+                          {row.membership_type}
+                        </span>
+                        • {row.referrals} Ref
+                      </div>
                     </TableCell>
-                    <TableCell />
+                    <TableCell>
+                      <Badge variant="outline" className={row.active_status === "ACTIVE" ? "text-green-600 border-green-200" : ""}>
+                        {row.active_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatNaira(row.registration_fee)}</TableCell>
+                    <TableCell>{formatNaira(row.yearly_fee)}</TableCell>
+                    {MONTHS.map(m => (
+                      <TableCell key={m.value} className={m.value === month ? "bg-gold/5 font-bold" : "text-muted-foreground"}>
+                        {row.monthly_fees[m.value] ? formatNaira(row.monthly_fees[m.value]) : "—"}
+                      </TableCell>
+                    ))}
+                    <TableCell className="bg-green-50 font-bold text-green-700">{formatNaira(row.total_fees_paid)}</TableCell>
+                    <TableCell className="bg-red-50 font-bold text-red-600">{formatNaira(row.total_fees_outstanding)}</TableCell>
+                    <TableCell className="font-bold">{formatNaira(row.net_worth)}</TableCell>
+                    <TableCell><Badge variant="secondary">#{row.ranking}</Badge></TableCell>
                   </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
-
-      <Dialog open={showAdjModal} onOpenChange={setShowAdjModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Manual Adjustment — {adjForm.member_name}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label>Amount (use negative for debit, e.g. -5000)</Label>
-              <Input
-                type="number"
-                placeholder="e.g. 5000 or -5000"
-                value={adjForm.amount}
-                onChange={(e) => setAdjForm({ ...adjForm, amount: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Reason / Description</Label>
-              <Input
-                placeholder="e.g. Correction for March error"
-                value={adjForm.description}
-                onChange={(e) => setAdjForm({ ...adjForm, description: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdjModal(false)}>Cancel</Button>
-            <Button
-              onClick={handleSaveAdjustment}
-              disabled={saving || !adjForm.amount}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Save Adjustment
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
