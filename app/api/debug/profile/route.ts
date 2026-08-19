@@ -14,7 +14,7 @@ export async function GET() {
           getAll() {
             return cookieStore.getAll()
           },
-          setAll(cookiesToSet) {
+          setAll() {
             // no-op for debug route
           },
         },
@@ -41,8 +41,8 @@ export async function GET() {
       userError: userErr ?? null,
       profileError: profileErr ?? null,
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Debug profile route error:", err)
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 })
+    return NextResponse.json({ ok: false, error: String(err instanceof Error ? err.message : err) }, { status: 500 })
   }
 }

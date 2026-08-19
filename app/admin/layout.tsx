@@ -27,9 +27,9 @@ export default async function AdminLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <AdminSidebar profile={profile as any} />
+      <AdminSidebar profile={profile} />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <AdminHeader profile={profile as any} />
+        <AdminHeader profile={profile} />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>

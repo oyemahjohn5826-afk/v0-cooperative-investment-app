@@ -11,7 +11,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js"
  * This implementation logs detailed errors to the server console to help debugging.
  */
 
-function makeJsonError(message: string, details?: any, status = 500) {
+function makeJsonError(message: string, details?: unknown, status = 500) {
   return NextResponse.json({ ok: false, error: message, details }, { status })
 }
 
@@ -109,8 +109,8 @@ export async function POST(req: NextRequest) {
     }
 
     return res
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("whoami: unexpected error:", err)
-    return makeJsonError("unexpected_error", String(err?.message ?? err), 500)
+    return makeJsonError("unexpected_error", String(err instanceof Error ? err.message : err), 500)
   }
 }

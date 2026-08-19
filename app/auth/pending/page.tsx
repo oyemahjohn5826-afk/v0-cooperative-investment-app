@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Clock, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -11,6 +10,15 @@ import {
 import { Logo } from "@/components/logo"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+
+async function signOutAction() {
+  "use server"
+  const cookieStore = await cookies()
+  for (const name of cookieStore.getAll().map((c) => c.name)) {
+    cookieStore.delete(name)
+  }
+  redirect("/auth/member-login")
+}
 
 export default async function PendingPage() {
   const cookieStore = await cookies()
@@ -68,18 +76,11 @@ export default async function PendingPage() {
               <Button asChild variant="outline">
                 <Link href="/auth/member-login">Back to login</Link>
               </Button>
-              <Button
-                variant="destructive"
-                onClick={async () => {
-                  await fetch("/api/auth/logout", {
-                    method: "POST",
-                    cache: "no-store",
-                  })
-                  window.location.href = "/auth/member-login"
-                }}
-              >
-                Sign Out
-              </Button>
+              <form action={signOutAction}>
+                <Button type="submit" variant="destructive">
+                  Sign Out
+                </Button>
+              </form>
             </div>
           </CardContent>
         </Card>

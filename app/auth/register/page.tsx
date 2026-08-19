@@ -62,7 +62,7 @@ export default function RegisterPage() {
 
       // 2) Create profile via server service route
       // Preferred: if we have a session.access_token, send it; otherwise send email for server to look up the auth user
-      const registerPayload: any = {
+      const registerPayload: Record<string, unknown> = {
         full_name: data.full_name,
         phone: data.phone ?? null,
       }
@@ -113,7 +113,7 @@ export default function RegisterPage() {
       toast.success("Registration received — your account is awaiting approval.")
       router.push("/auth/pending")
       router.refresh()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Registration error:", err)
       toast.error("Registration failed. Try again or contact support.")
     } finally {

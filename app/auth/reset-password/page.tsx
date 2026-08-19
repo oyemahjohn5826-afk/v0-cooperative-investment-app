@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
       .then(({ error }: { error: { message: string } | null }) => {
         if (error) setExchangeError(error.message)
       })
-      .catch((e: any) => setExchangeError(String(e?.message ?? e)))
+      .catch((e: unknown) => setExchangeError(String(e instanceof Error ? e.message : e)))
       .finally(() => setIsExchanging(false))
   }, [])
 
@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
       toast.success("Password updated successfully")
       router.push("/auth/member-login")
       router.refresh()
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Reset password error:", e)
       toast.error("An unexpected error occurred")
       setIsLoading(false)

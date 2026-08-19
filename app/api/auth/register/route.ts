@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
-function jsonError(message: string, details?: any, status = 500) {
+function jsonError(message: string, details?: unknown, status = 500) {
   return NextResponse.json({ ok: false, error: message, details }, { status })
 }
 
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
       const adminJson = await adminRes.json().catch(() => null)
 
-      let foundUser: any = null
+      let foundUser: Record<string, unknown> | null = null
 
       if (Array.isArray(adminJson)) {
         foundUser = adminJson[0] ?? null
@@ -102,8 +102,8 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      userId = foundUser.id
-      userEmail = foundUser.email ?? email
+      userId = foundUser.id as string
+      userEmail = (foundUser.email as string | undefined) ?? email
     }
 
     if (!userId) {
@@ -136,8 +136,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ ok: true, profile: upsertedData })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("register: unexpected error:", err)
-    return jsonError("unexpected_error", String(err?.message ?? err), 500)
+    return jsonError("unexpected_error", String(err instanceof Error ? err.message : err), 500)
   }
 }

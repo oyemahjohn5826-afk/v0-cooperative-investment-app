@@ -33,5 +33,10 @@ rpc.json
 rst.json
 tg.json
 ts.json
+eslint.json
+schema-dump.json
+schema-dump.err
+policies-dump.txt
+policies-dump.err
 
 # Supabase SQL is now regenerated from the live schema (accurate source of truth)

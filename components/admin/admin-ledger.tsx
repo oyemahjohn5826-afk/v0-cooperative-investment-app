@@ -1,15 +1,11 @@
 "use client"
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { PlusCircle, Loader2, TrendingUp, Users, Wallet, Percent } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 const MONTHS = [
   { label: "January", value: 1, short: "Jan" },
@@ -35,10 +31,6 @@ function formatNaira(amount: number) {
     currency: "NGN",
     minimumFractionDigits: 0,
   }).format(amount)
-}
-
-function formatPct(value: number) {
-  return (value * 100).toFixed(2) + "%"
 }
 
 type Member = {
@@ -89,18 +81,13 @@ type MemberFeeRow = {
 }
 
 export function AdminLedger({ members }: { members: Member[] }) {
-  const supabase = createClient()
   const [year, setYear] = useState(CURRENT_YEAR)
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [ledger, setLedger] = useState<LedgerRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [showAdjModal, setShowAdjModal] = useState(false)
-  const [adjForm, setAdjForm] = useState({ id: "", name: "", amount: "", reason: "" })
-  const [isSaving, startSaving] = useTransition()
 
-  useEffect(() => { fetchLedger() }, [year, month])
-
-  async function fetchLedger() {
+  const fetchLedger = useCallback(async () => {
+    const supabase = createClient()
     setLoading(true)
     const { data: shareholdersData } = await supabase.from("shareholders").select("*")
     const { data: feesData } = await supabase.from("member_fees").select("*").eq("year", year)
@@ -144,7 +131,9 @@ export function AdminLedger({ members }: { members: Member[] }) {
 
     setLedger(rows.sort((a, b) => (a.ranking || 999) - (b.ranking || 999)))
     setLoading(false)
-  }
+  }, [year, members])
+
+  useEffect(() => { fetchLedger() }, [fetchLedger])
 
   // Summary Totals
   const totalAssets = ledger.reduce((s, r) => s + r.net_worth, 0)

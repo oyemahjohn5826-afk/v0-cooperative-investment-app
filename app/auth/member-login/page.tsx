@@ -122,7 +122,7 @@ export default function MemberLoginPage() {
       // otherwise pending or other status
       router.push("/auth/pending")
       router.refresh()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Member login error:", err)
       toast.error("Login failed")
     } finally {

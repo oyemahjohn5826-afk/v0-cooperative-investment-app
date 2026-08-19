@@ -35,9 +35,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <DashboardSidebar profile={profile as any} />
+      <DashboardSidebar profile={profile} />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <DashboardHeader profile={profile as any} />
+        <DashboardHeader profile={profile} />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>

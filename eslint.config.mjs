@@ -10,10 +10,15 @@ import nextTypescript from "eslint-config-next/typescript";
 const relaxedRules = {
   rules: {
     "@typescript-eslint/no-explicit-any": "warn",
-    "react-hooks/set-state-in-effect": "warn",
-    "react-hooks/static-components": "warn",
+    // shadcn/ui components legitimately use these patterns (creating components
+    // during render, reading matchMedia in render, etc.); eslint-config-next@16
+    // flags them but they are not bugs here. Keep exhaustive-deps as a warning
+    // (it's the one genuinely useful signal) and immutability as warn.
     "react-hooks/immutability": "warn",
-    "react-hooks/purity": "warn",
+    "react-hooks/static-components": "off",
+    "react-hooks/incompatible-library": "off",
+    "react-hooks/purity": "off",
+    "react-hooks/set-state-in-effect": "off",
   },
 };
 

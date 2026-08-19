@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     return res
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("auth/sync error:", err)
     return NextResponse.json({ error: "internal_error" }, { status: 500 })
   }
