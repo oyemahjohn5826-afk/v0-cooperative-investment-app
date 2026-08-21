@@ -12,7 +12,24 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules
 .next/
+.open-next/
+.wrangler/
+.buildcheck.log
 .DS_Store
+
+# Dev debugging scripts (throwaway E2E probes, not project source)
+scripts/e2e-*.mjs
+scripts/_verify_admin.mjs
+scripts/diag-*.mjs
+scripts/apply-*.mjs
+scripts/gen-wrangler.mjs
+scripts/list-profiles.mjs
+scripts/reset-admin.mjs
+scripts/test-members-query.mjs
+scripts/auth-probe.mjs
+scripts/ensure-member.mjs
+scripts/debug-login.mjs
+scripts/confirm-loop.mjs
 
 # Local agent/tooling state
 .hermes/
